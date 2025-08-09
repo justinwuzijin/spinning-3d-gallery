@@ -7,6 +7,7 @@ interface MediaItem {
   src: string;
   thumbnail?: string;
   title: string;
+  prompt?: string;
 }
 
 interface Gallery3DProps {
@@ -37,29 +38,54 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
     return new Promise((resolve) => {
       console.log('Creating video texture for:', item.src);
       
-      // Create fallback texture function
-      const createFallbackTexture = (title: string, id?: string) => {
+      // Create fallback texture function with improved design
+      const createFallbackTexture = (title: string, prompt?: string, type: string = 'video') => {
         const canvas = document.createElement('canvas');
         canvas.width = 320;
         canvas.height = 240;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // Create a gradient background
+          // Create a more appealing gradient background
           const gradient = ctx.createLinearGradient(0, 0, 320, 240);
-          gradient.addColorStop(0, '#ff0000');
-          gradient.addColorStop(1, '#cc0000');
+          if (type === 'instagram') {
+            gradient.addColorStop(0, '#833AB4');
+            gradient.addColorStop(0.5, '#FD1D1D');
+            gradient.addColorStop(1, '#F77737');
+          } else {
+            gradient.addColorStop(0, '#FF0000');
+            gradient.addColorStop(0.5, '#CC0000');
+            gradient.addColorStop(1, '#990000');
+          }
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, 320, 240);
           
-          // Add text
+          // Add a subtle pattern overlay
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          for (let i = 0; i < 320; i += 20) {
+            for (let j = 0; j < 240; j += 20) {
+              if ((i + j) % 40 === 0) {
+                ctx.fillRect(i, j, 10, 10);
+              }
+            }
+          }
+          
+          // Add title text
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 16px Arial';
           ctx.textAlign = 'center';
           ctx.fillText(title, 160, 100);
-          if (id) {
+          
+          // Add prompt text if available
+          if (prompt) {
             ctx.font = '12px Arial';
-            ctx.fillText(id, 160, 120);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillText(prompt, 160, 120);
           }
+          
+          // Add type indicator
+          ctx.font = '10px Arial';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.fillText(`Click to watch ${type}`, 160, 140);
         }
         const texture = new THREE.CanvasTexture(canvas);
         texture.minFilter = THREE.LinearFilter;
@@ -68,7 +94,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         return texture;
       };
       
-      // Handle YouTube URLs - convert to embed format
+      // Handle YouTube URLs
       if (item.src.includes('youtube.com') || item.src.includes('youtu.be')) {
         const videoId = extractYouTubeId(item.src);
         console.log('Extracted video ID:', videoId);
@@ -83,7 +109,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
           // Set a timeout for thumbnail loading
           const timeout = setTimeout(() => {
             console.log('Thumbnail loading timeout, creating fallback');
-            const fallbackTexture = createFallbackTexture('YouTube Video', videoId);
+            const fallbackTexture = createFallbackTexture(item.title, item.prompt, 'YouTube');
             resolve(fallbackTexture);
           }, 5000); // 5 second timeout
           
@@ -102,15 +128,20 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
               // onError - create fallback
               clearTimeout(timeout);
               console.log('Failed to load thumbnail for:', videoId, 'creating fallback');
-              const fallbackTexture = createFallbackTexture('YouTube Video', videoId);
+              const fallbackTexture = createFallbackTexture(item.title, item.prompt, 'YouTube');
               resolve(fallbackTexture);
             }
           );
         } else {
           console.log('Invalid YouTube URL, creating fallback');
-          const fallbackTexture = createFallbackTexture('Invalid YouTube URL');
+          const fallbackTexture = createFallbackTexture(item.title, item.prompt, 'YouTube');
           resolve(fallbackTexture);
         }
+      } else if (item.src.includes('instagram.com')) {
+        // Handle Instagram URLs
+        console.log('Instagram URL detected, creating fallback');
+        const fallbackTexture = createFallbackTexture(item.title, item.prompt, 'Instagram');
+        resolve(fallbackTexture);
       } else {
         // Handle direct video files
         const video = document.createElement('video');
@@ -279,36 +310,12 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
     return points;
   };
 
-  const createFloatingParticles = (scene: THREE.Scene) => {
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particleCount = 50;
-    const positions = new Float32Array(particleCount * 3);
-
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 30;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 30;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 30;
-    }
-
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-    const particlesMaterial = new THREE.PointsMaterial({
-      color: 0x000000,
-      size: 0.05,
-      transparent: true,
-      opacity: 0.3
-    });
-
-    const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particles);
-  };
-
   const initScene = () => {
     if (!mountRef.current) return;
 
-    // Scene setup - Transparent background to show fluid background
+    // Scene setup
     const scene = new THREE.Scene();
-    scene.background = null; // Transparent background to show fluid background
+    scene.background = new THREE.Color(0x000000);
     sceneRef.current = scene;
 
     // Camera setup - Optimized for perfect spherical alignment
@@ -322,15 +329,14 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
     camera.position.set(0, 0, 28); // Further back for bigger gallery
     cameraRef.current = camera;
 
-    // Renderer setup - Support transparency for fluid background
+    // Renderer setup
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
-      alpha: true,
       powerPreference: 'high-performance'
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = false; // 移除阴影以获得更简洁的外观
+    renderer.shadowMap.enabled = false;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     rendererRef.current = renderer;
@@ -349,9 +355,6 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
     const group = new THREE.Group();
     groupRef.current = group;
     scene.add(group);
-
-    // Add subtle floating particles for atmosphere
-    createFloatingParticles(scene);
   };
 
   const createMediaItems = async () => {
@@ -379,6 +382,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
             if (item.type === 'video') {
               texture = await createVideoTexture(item);
             } else {
+              // For images, try to load the actual image first
               texture = await createImageTexture(item.src);
             }
 
@@ -514,15 +518,16 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         }
 
         if (clickedItem) {
-          // Focus on the clicked item
+          // If it's a video, open it directly in a new tab
+          if (clickedItem.type === 'video') {
+            window.open(clickedItem.src, '_blank');
+            return; // Don't focus, just open the link
+          }
+          
+          // For images, focus on the clicked item
           setIsFocused(true);
           setFocusedItem(clickedItem);
           setActiveVideo(clickedItem.id);
-          
-          // If it's a YouTube video, open it in a new tab
-          if (clickedItem.type === 'video' && (clickedItem.src.includes('youtube.com') || clickedItem.src.includes('youtu.be'))) {
-            window.open(clickedItem.src, '_blank');
-          }
         }
       }
     }
@@ -657,97 +662,77 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
     };
   }, [mediaItems]);
 
-      return (
-        <div className="relative w-full h-screen overflow-hidden">
-          <div ref={mountRef} className="w-full h-full absolute inset-0 z-0" />
-          
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
-              <div className="flex flex-col items-center space-y-6 animate-fade-in">
-                <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                <div className="text-caption text-white">loading gallery</div>
-              </div>
-            </div>
-          )}
-
-          {/* Focused view overlay */}
-          {isFocused && focusedItem && (
-            <div className="absolute inset-0 bg-black bg-opacity-90 backdrop-blur-md z-20 flex items-center justify-center">
-              <div className="text-center text-white max-w-4xl mx-auto p-8">
-                {focusedItem.type === 'image' ? (
-                  <div className="mb-6">
-                    <img 
-                      src={focusedItem.src} 
-                      alt={focusedItem.title}
-                      className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
-                    />
-                  </div>
-                ) : null}
-                <h2 className="text-display text-4xl mb-4 font-black tracking-tight">
-                  {focusedItem.title}
-                </h2>
-                <p className="text-body text-lg mb-6 opacity-90">
-                  {focusedItem.type === 'video' ? 'Video' : 'Image'} • Click to return to gallery
-                </p>
-                {focusedItem.type === 'video' && (focusedItem.src.includes('youtube.com') || focusedItem.src.includes('youtu.be')) && (
-                  <div className="mb-6">
-                    <p className="text-caption mb-2">YouTube video opened in new tab</p>
-                    <a 
-                      href={focusedItem.src} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-block bg-orange-400 text-black px-6 py-3 rounded-lg font-bold hover:bg-orange-300 transition-colors"
-                    >
-                      Open Video
-                    </a>
-                  </div>
-                )}
-                <button 
-                  onClick={() => {
-                    setIsFocused(false);
-                    setFocusedItem(null);
-                    setActiveVideo(null);
-                  }}
-                  className="text-distorted text-white hover:text-orange-300 transition-colors tracking-wider bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl"
-                >
-                  ← return to gallery
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Main text overlay - only show when not focused */}
-          {!isFocused && (
-            <div className="absolute top-1/2 left-8 transform -translate-y-1/2 text-white animate-fade-in-up text-left z-10 bg-black/40 backdrop-blur-md rounded-lg p-10 max-w-lg shadow-2xl">
-              <h1 className="text-display text-5xl mb-6 font-black tracking-tight drop-shadow-2xl">a byjustinwu curation</h1>
-              <p className="text-distorted text-white mb-4 text-lg tracking-wider ml-2 drop-shadow-2xl">© 2025 byjustinwu</p>
-              <p className="text-body text-sm text-white opacity-95 tracking-wide drop-shadow-lg">
-                hover to explore • click to open
-              </p>
-            </div>
-          )}
-
-          {/* Status indicators - positioned to avoid overlap */}
-          {!isFocused && (
-            <div className="absolute top-12 right-12 flex flex-col items-end space-y-3 max-w-xs">
-              {activeVideo && (
-                <div className="text-stretched text-white animate-fade-in bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
-                    <span className="tracking-wider drop-shadow-2xl">playing</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeVideo && !isFocused && (
-            <div className="absolute bottom-8 right-8 text-stretched text-white animate-fade-in max-w-xs bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl drop-shadow-2xl">
-              playing video
-            </div>
-          )}
+  return (
+    <div className="relative w-full h-screen overflow-hidden">
+      <div ref={mountRef} className="w-full h-full absolute inset-0 z-0" />
+      
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
+          <div className="flex flex-col items-center space-y-6">
+            <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="text-white">loading gallery</div>
+          </div>
         </div>
-      );
+      )}
+
+      {/* Focused view overlay */}
+      {isFocused && focusedItem && (
+        <div className="absolute inset-0 bg-black bg-opacity-90 backdrop-blur-md z-20 flex items-center justify-center">
+          <div className="text-center text-white max-w-4xl mx-auto p-8">
+            {focusedItem.type === 'image' ? (
+              <div className="mb-6">
+                <img 
+                  src={focusedItem.src} 
+                  alt={focusedItem.title}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+                />
+              </div>
+            ) : null}
+            <h2 className="text-4xl mb-4 font-black tracking-tight">
+              {focusedItem.title}
+            </h2>
+            <p className="text-lg mb-6 opacity-90">
+              {focusedItem.type === 'video' ? 'Video' : 'Image'} • Click to return to gallery
+            </p>
+            {focusedItem.type === 'video' && (focusedItem.src.includes('youtube.com') || focusedItem.src.includes('youtu.be')) && (
+              <div className="mb-6">
+                <p className="mb-2">YouTube video opened in new tab</p>
+                <a 
+                  href={focusedItem.src} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block bg-orange-400 text-black px-6 py-3 rounded-lg font-bold hover:bg-orange-300 transition-colors"
+                >
+                  Open Video
+                </a>
+              </div>
+            )}
+            <button 
+              onClick={() => {
+                setIsFocused(false);
+                setFocusedItem(null);
+                setActiveVideo(null);
+              }}
+              className="text-white hover:text-orange-300 transition-colors tracking-wider bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl"
+            >
+              ← return to gallery
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main text overlay - only show when not focused */}
+      {!isFocused && (
+        <div className="absolute top-1/2 left-8 transform -translate-y-1/2 text-white text-left z-10">
+          <h1 className="text-5xl mb-6 font-black tracking-tight drop-shadow-2xl">a byjustinwu curation</h1>
+          <p className="mb-4 text-lg tracking-wider ml-2 drop-shadow-2xl">© 2025 byjustinwu</p>
+          <p className="text-sm opacity-95 tracking-wide drop-shadow-lg">
+            hover to explore • click to open
+          </p>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Gallery3D;
