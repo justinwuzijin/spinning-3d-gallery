@@ -31,9 +31,8 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const videosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const videosRef = useRef<HTMLVideoElement[]>([]);
   const meshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
-  const lastMouseMoveRef = useRef<number>(0);
 
   // Add debug logging
   useEffect(() => {
@@ -158,7 +157,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
         video.muted = true;
         video.playsInline = true;
         video.src = item.src;
-        videosRef.current.set(item.id, video);
+        videosRef.current.push(video); // Store video element in ref
         const texture = new THREE.VideoTexture(video);
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
@@ -414,11 +413,13 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
             const geometry = new THREE.PlaneGeometry(4.0, 3.0); // Increased from 3.2, 2.4 for bigger items
             
             // Create a material with rounded corners effect using a simple approach
-            const material = new THREE.MeshBasicMaterial({ 
+            const material = new THREE.MeshStandardMaterial({ 
               map: texture,
               transparent: true,
               opacity: 1.0,
-              side: THREE.DoubleSide
+              side: THREE.DoubleSide,
+              emissive: new THREE.Color(0x000000),
+              emissiveIntensity: 0.0
             });
 
             const mesh = new THREE.Mesh(geometry, material);
@@ -442,17 +443,24 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
             console.error(`Error loading media item ${item.id}:`, error);
             // Create a fallback mesh even if loading fails
             const fallbackGeometry = new THREE.PlaneGeometry(4.0, 3.0); // Match the new size
-            const fallbackMaterial = new THREE.MeshBasicMaterial({
+            const fallbackMaterial = new THREE.MeshStandardMaterial({
               color: 0xff0000,
               transparent: true,
               opacity: 1.0,
-              side: THREE.DoubleSide
+              side: THREE.DoubleSide,
+              emissive: new THREE.Color(0x000000),
+              emissiveIntensity: 0.0
             });
             const fallbackMesh = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
             const position = positions[index];
             fallbackMesh.position.copy(position);
             fallbackMesh.lookAt(0, 0, 0);
-            fallbackMesh.userData = { item, originalScale: { x: 1, y: 1, z: 1 }, originalOpacity: 1.0 };
+            fallbackMesh.userData = { 
+              item, 
+              originalScale: { x: 1, y: 1, z: 1 }, 
+              originalOpacity: 1.0,
+              originalPosition: position.clone()
+            };
             groupRef.current!.add(fallbackMesh);
             meshesRef.current.set(item.id, fallbackMesh);
             console.log(`Created fallback mesh for item ${item.id}`);
@@ -474,46 +482,48 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
   };
 
   const handleMouseMove = (event: MouseEvent) => {
-    if (isFocused) return; // Disable mouse control when focused
-    
-    // Throttle mouse movement to prevent spazzing (limit to 60fps)
-    const now = Date.now();
-    if (now - lastMouseMoveRef.current < 16) { // 16ms = ~60fps
-      return;
-    }
-    lastMouseMoveRef.current = now;
-    
-    mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    // Increased sensitivity for full rotation around the sphere
-    targetRotationRef.current.y = Math.max(-Math.PI, Math.min(Math.PI, mouseRef.current.x * 0.5)); // Clamp values
-    targetRotationRef.current.x = Math.max(-Math.PI, Math.min(Math.PI, mouseRef.current.y * 0.5)); // Clamp values
-
-    // 检测悬停的项目
     if (!cameraRef.current || !groupRef.current) return;
 
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+    // Update target rotation based on mouse position
+    targetRotationRef.current.x = mouse.y * 0.5;
+    targetRotationRef.current.y = mouse.x * 0.5;
+
+    // Raycasting for hover effects
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, cameraRef.current);
 
-    const meshes = Array.from(meshesRef.current.values());
-    const intersects = raycaster.intersectObjects(meshes);
-
-    if (intersects.length > 0) {
-      const hoveredMesh = intersects[0].object as THREE.Mesh;
-      const item = hoveredMesh.userData.item as MediaItem;
-      setHoveredItem(item.id);
-    } else {
-      setHoveredItem(null);
+    if (groupRef.current) {
+      const meshes = Array.from(meshesRef.current.values());
+      const intersects = raycaster.intersectObjects(meshes);
+      
+      let newHoveredItem: string | null = null;
+      
+      if (intersects.length > 0) {
+        const intersectedMesh = intersects[0].object as THREE.Mesh;
+        const hoveredItem = intersectedMesh.userData.item as MediaItem;
+        if (hoveredItem) {
+          newHoveredItem = hoveredItem.id;
+          // Change cursor to pointer when hovering over items
+          document.body.style.cursor = 'pointer';
+        }
+      } else {
+        // Reset cursor when not hovering over items
+        document.body.style.cursor = 'default';
+      }
+      
+      setHoveredItem(newHoveredItem);
     }
   };
 
   const handleClick = (event: MouseEvent) => {
+    console.log('Click event triggered');
+    
     if (isFocused) {
+      console.log('Already focused, returning to gallery view');
       // If already focused, return to gallery view
       setIsFocused(false);
       setFocusedItem(null);
@@ -524,27 +534,30 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    console.log('Mouse coordinates:', { x: mouse.x, y: mouse.y });
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, cameraRef.current!);
 
     if (groupRef.current) {
-      const intersects = raycaster.intersectObjects(groupRef.current.children, true);
+      // Use the meshes directly from our ref instead of group children
+      const meshes: THREE.Mesh[] = Array.from(meshesRef.current.values());
+      console.log('Checking intersection with', meshes.length, 'meshes');
+      
+      const intersects = raycaster.intersectObjects(meshes);
+      console.log('Intersections found:', intersects.length);
       
       if (intersects.length > 0) {
-        const intersectedObject = intersects[0].object;
-        const mesh = meshesRef.current.get(intersectedObject.uuid) || intersectedObject;
+        const intersectedMesh = intersects[0].object as THREE.Mesh;
+        const clickedItem = intersectedMesh.userData.item as MediaItem;
         
-        // Find the media item associated with this mesh
-        let clickedItem: MediaItem | null = null;
-        for (const [id, meshRef] of meshesRef.current.entries()) {
-          if (meshRef === mesh || meshRef.uuid === intersectedObject.uuid) {
-            clickedItem = mediaItems.find(item => item.id === id) || null;
-            break;
-          }
-        }
-
+        console.log('Intersected mesh:', intersectedMesh);
+        console.log('UserData:', intersectedMesh.userData);
+        console.log('Clicked item:', clickedItem);
+        
         if (clickedItem) {
+          console.log('Successfully clicked on item:', clickedItem.title);
           // For all items, focus on the clicked item to show details
           setIsFocused(true);
           setFocusedItem(clickedItem);
@@ -552,10 +565,17 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
           
           // If it's a video, also open it in a new tab
           if (clickedItem.type === 'video') {
+            console.log('Opening video in new tab:', clickedItem.src);
             window.open(clickedItem.src, '_blank');
           }
+        } else {
+          console.warn('No item data found in intersected mesh');
         }
+      } else {
+        console.log('No intersections found');
       }
+    } else {
+      console.warn('Group ref not available');
     }
   };
 
@@ -590,9 +610,9 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
         // Hide other items
         meshesRef.current.forEach((mesh, id) => {
           if (id !== focusedItem.id) {
-            const currentOpacity = (mesh.material as THREE.MeshBasicMaterial).opacity || 1.0;
+            const currentOpacity = (mesh.material as THREE.MeshStandardMaterial).opacity || 1.0;
             const newOpacity = currentOpacity + (0 - currentOpacity) * 0.1;
-            (mesh.material as THREE.MeshBasicMaterial).opacity = newOpacity;
+            (mesh.material as THREE.MeshStandardMaterial).opacity = newOpacity;
           }
         });
       }
@@ -624,18 +644,26 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
         } else if (isHovered) {
           targetScale = 1.1;
           targetOpacity = 1.0;
+          // Add subtle glow effect for hovered items
+          (mesh.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0x333333);
+          (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.3;
         } else {
           targetScale = 1.0;
           targetOpacity = 1.0;
+          // Remove glow effect
+          (mesh.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0x000000);
+          (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.0;
         }
         
+        // Smooth scale animation
         const currentScale = mesh.scale.x;
-        const newScale = currentScale + (targetScale - currentScale) * 0.08;
+        const newScale = currentScale + (targetScale - currentScale) * 0.1;
         mesh.scale.setScalar(newScale);
         
-        const currentOpacity = (mesh.material as THREE.MeshBasicMaterial).opacity || 1.0;
-        const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.08;
-        (mesh.material as THREE.MeshBasicMaterial).opacity = newOpacity;
+        // Smooth opacity animation
+        const currentOpacity = (mesh.material as THREE.MeshStandardMaterial).opacity || 1.0;
+        const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.1;
+        (mesh.material as THREE.MeshStandardMaterial).opacity = newOpacity;
       });
     }
 
