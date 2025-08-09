@@ -24,8 +24,6 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   const mouseRef = useRef({ x: 0, y: 0 });
   const targetRotationRef = useRef({ x: 0, y: 0 });
   const currentRotationRef = useRef({ x: 0, y: 0 });
-  const [isExhibitionMode, setIsExhibitionMode] = useState(false);
-  const [exhibitionVideo, setExhibitionVideo] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
   const [focusedItem, setFocusedItem] = useState<MediaItem | null>(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -33,8 +31,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const videosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const meshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
-  const autoRotateRef = useRef(true);
-  const focusTimerRef = useRef<number | null>(null);
+  const lastMouseMoveRef = useRef<number>(0);
 
   const createVideoTexture = (item: MediaItem): Promise<THREE.Texture> => {
     return new Promise((resolve) => {
@@ -262,31 +259,21 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   const createCircularStructure = (count: number, radius: number) => {
     const points: THREE.Vector3[] = [];
     
-    // Create a compact circular 3D structure - ball-like formation with images facing outwards
-    // For 32 items, we'll create multiple rings for better distribution
-    
-    // Calculate how many rings we need - adjusted for compact ball formation
-    const itemsPerRing = 8; // 8 items per ring
-    const numRings = Math.ceil(count / itemsPerRing);
+    // Create a perfect spherical layout inspired by the reference article
+    // Using Fibonacci sphere distribution for optimal spacing
+    const phi = Math.PI * (3 - Math.sqrt(5)); // Golden angle
     
     for (let i = 0; i < count; i++) {
-      const ringIndex = Math.floor(i / itemsPerRing);
-      const itemInRing = i % itemsPerRing;
+      const y = 1 - (i / (count - 1)) * 2; // y goes from 1 to -1
+      const radius_at_y = Math.sqrt(1 - y * y); // radius at y
+      const theta = phi * i; // golden angle increment
       
-      // Calculate ring radius - much tighter spacing for compact ball
-      const ringRadius = radius * (0.2 + ringIndex * 0.15);
+      const x = Math.cos(theta) * radius_at_y;
+      const z = Math.sin(theta) * radius_at_y;
       
-      // Calculate angle for this item in the ring
-      const angle = (itemInRing / itemsPerRing) * Math.PI * 2;
-      
-      // Calculate position on the circle
-      const x = Math.cos(angle) * ringRadius;
-      const y = Math.sin(angle) * ringRadius;
-      
-      // Add some depth variation for 3D effect - reduced for compact ball
-      const z = Math.sin(ringIndex * 0.3) * Math.cos(angle * 1.5) * (radius * 0.05);
-      
-      points.push(new THREE.Vector3(x, y, z));
+      // Use consistent radius for perfect alignment - no random variation
+      const scaledRadius = radius * 0.8; // Increased from 0.7 for bigger gallery
+      points.push(new THREE.Vector3(x * scaledRadius, y * scaledRadius, z * scaledRadius));
     }
     
     return points;
@@ -319,23 +306,23 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   const initScene = () => {
     if (!mountRef.current) return;
 
-    // Scene setup - Bright vibrant background
+    // Scene setup - Transparent background to show fluid background
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8f9fa); // Bright background to match the vibe
+    scene.background = null; // Transparent background to show fluid background
     sceneRef.current = scene;
 
-    // Camera setup - Adjusted for compact circular structure
+    // Camera setup - Optimized for perfect spherical alignment
     const camera = new THREE.PerspectiveCamera(
-      60, // Wider FOV for better view of circular structure
+      75, // Wider FOV for better visibility
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    // Position camera to accommodate compact circular structure
-    camera.position.set(0, 0, 15);
+    // Position camera for optimal viewing of the spherical layout
+    camera.position.set(0, 0, 28); // Further back for bigger gallery
     cameraRef.current = camera;
 
-    // Renderer setup - 更柔和的渲染
+    // Renderer setup - Support transparency for fluid background
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       alpha: true,
@@ -350,11 +337,11 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
 
     mountRef.current.appendChild(renderer.domElement);
 
-    // Brighter lighting for better visibility
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    // Much brighter lighting for better visibility
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
     directionalLight.position.set(5, 5, 5);
     scene.add(directionalLight);
 
@@ -395,71 +382,48 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
               texture = await createImageTexture(item.src);
             }
 
-            // Create plane geometry - smaller for compact ball formation
-            const geometry = new THREE.PlaneGeometry(2, 1.5);
+            // Create plane geometry - optimized for perfect spherical alignment with rounded corners
+            const geometry = new THREE.PlaneGeometry(3.2, 2.4); // Increased from 2.5, 1.8
+            
+            // Create a material with rounded corners effect using a simple approach
             const material = new THREE.MeshBasicMaterial({ 
               map: texture,
               transparent: true,
-              opacity: 0.9
+              opacity: 1.0,
+              side: THREE.DoubleSide
             });
 
             const mesh = new THREE.Mesh(geometry, material);
             const position = positions[index];
             
             mesh.position.copy(position);
-            // Make each item face towards the screen (outwards) like in the referenced article
-            mesh.lookAt(0, 0, 15); // Look towards the camera position
+            // Make each item face towards the center (inwards) for spherical effect
+            mesh.lookAt(0, 0, 0);
             mesh.userData = { 
               item, 
               originalScale: { x: 1, y: 1, z: 1 },
-              originalOpacity: 0.9,
+              originalOpacity: 1.0,
               originalPosition: position.clone()
             };
 
-            // Add border effects - smaller for compact formation
-            const borderGeometry = new THREE.PlaneGeometry(2.2, 1.7);
-            const borderMaterial = new THREE.MeshBasicMaterial({
-              color: 0x000000,
-              transparent: true,
-              opacity: 0.1,
-              side: THREE.DoubleSide
-            });
-            const borderMesh = new THREE.Mesh(borderGeometry, borderMaterial);
-            borderMesh.position.copy(position);
-            borderMesh.lookAt(0, 0, 15); // Look towards the camera position
-            borderMesh.position.multiplyScalar(0.98);
-
-            // Add inner border effects - smaller for compact formation
-            const innerBorderGeometry = new THREE.PlaneGeometry(1.9, 1.4);
-            const innerBorderMaterial = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.2,
-              side: THREE.DoubleSide
-            });
-            const innerBorderMesh = new THREE.Mesh(innerBorderGeometry, innerBorderMaterial);
-            innerBorderMesh.position.copy(position);
-            innerBorderMesh.lookAt(0, 0, 15); // Look towards the camera position
-            innerBorderMesh.position.multiplyScalar(1.01);
-
-            groupRef.current!.add(borderMesh);
-            groupRef.current!.add(innerBorderMesh);
             groupRef.current!.add(mesh);
             meshesRef.current.set(item.id, mesh);
 
           } catch (error) {
             console.error(`Error loading media item ${item.id}:`, error);
-            // Create a fallback mesh even if loading fails - smaller for compact formation
-            const fallbackGeometry = new THREE.PlaneGeometry(2, 1.5);
+            // Create a fallback mesh even if loading fails
+            const fallbackGeometry = new THREE.PlaneGeometry(3.2, 2.4); // Match the new size
             const fallbackMaterial = new THREE.MeshBasicMaterial({
               color: 0xff0000,
               transparent: true,
-              opacity: 0.9
+              opacity: 1.0,
+              side: THREE.DoubleSide
             });
             const fallbackMesh = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
             const position = positions[index];
             fallbackMesh.position.copy(position);
-            fallbackMesh.lookAt(0, 0, 15); // Look towards the camera position
+            fallbackMesh.lookAt(0, 0, 0);
+            fallbackMesh.userData = { item, originalScale: { x: 1, y: 1, z: 1 }, originalOpacity: 1.0 };
             groupRef.current!.add(fallbackMesh);
             meshesRef.current.set(item.id, fallbackMesh);
           }
@@ -468,49 +432,32 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         loadPromises.push(promise);
       });
 
+      // Wait for all media items to load
       await Promise.all(loadPromises);
+      setIsLoading(false);
       console.log('All media items loaded successfully');
     } catch (error) {
       console.error('Error in createMediaItems:', error);
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const startExhibitionMode = () => {
-    if (!isExhibitionMode) return;
-    
-    const showNextVideo = () => {
-      // Randomly select a video
-      const randomIndex = Math.floor(Math.random() * mediaItems.length);
-      const selectedVideo = mediaItems[randomIndex];
-      
-      setExhibitionVideo(selectedVideo.id);
-      
-      // Play the video if it's a direct video file
-      if (selectedVideo.type === 'video' && !selectedVideo.src.includes('youtube.com')) {
-        const video = videosRef.current.get(selectedVideo.id);
-        if (video) {
-          video.play();
-        }
-      }
-      
-      // Schedule next video
-      focusTimerRef.current = window.setTimeout(showNextVideo, 10000); // 10 seconds per video
-    };
-    
-    // Start the cycle
-    showNextVideo();
-  };
-
   const handleMouseMove = (event: MouseEvent) => {
-    if (isExhibitionMode) return; // Disable mouse control in exhibition mode
+    if (isFocused) return; // Disable mouse control when focused
+    
+    // Throttle mouse movement to prevent spazzing (limit to 60fps)
+    const now = Date.now();
+    if (now - lastMouseMoveRef.current < 16) { // 16ms = ~60fps
+      return;
+    }
+    lastMouseMoveRef.current = now;
     
     mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    targetRotationRef.current.y = mouseRef.current.x * 0.3; // 更温和的旋转
-    targetRotationRef.current.x = mouseRef.current.y * 0.3;
+    // Increased sensitivity for full rotation around the sphere
+    targetRotationRef.current.y = Math.max(-Math.PI, Math.min(Math.PI, mouseRef.current.x * 0.5)); // Clamp values
+    targetRotationRef.current.x = Math.max(-Math.PI, Math.min(Math.PI, mouseRef.current.y * 0.5)); // Clamp values
 
     // 检测悬停的项目
     if (!cameraRef.current || !groupRef.current) return;
@@ -611,65 +558,50 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         // Hide other items
         meshesRef.current.forEach((mesh, id) => {
           if (id !== focusedItem.id) {
-            const currentOpacity = (mesh.material as THREE.MeshBasicMaterial).opacity || 0.9;
+            const currentOpacity = (mesh.material as THREE.MeshBasicMaterial).opacity || 1.0;
             const newOpacity = currentOpacity + (0 - currentOpacity) * 0.1;
             (mesh.material as THREE.MeshBasicMaterial).opacity = newOpacity;
           }
         });
       }
     } else {
-      // Normal gallery mode
-      // Auto-rotation for exhibition mode
-      if (isExhibitionMode && autoRotateRef.current) {
-        groupRef.current.rotation.y += 0.005; // Slow, cinematic rotation
-      } else {
-        // Manual rotation when not in exhibition mode
-        currentRotationRef.current.x += (targetRotationRef.current.x - currentRotationRef.current.x) * 0.03;
-        currentRotationRef.current.y += (targetRotationRef.current.y - currentRotationRef.current.y) * 0.03;
+      // Normal gallery mode - interactive mouse control
+      // Manual rotation with increased sensitivity and smoothing
+      currentRotationRef.current.x += (targetRotationRef.current.x - currentRotationRef.current.x) * 0.02;
+      currentRotationRef.current.y += (targetRotationRef.current.y - currentRotationRef.current.y) * 0.02;
 
-        groupRef.current.rotation.x = currentRotationRef.current.x;
-        groupRef.current.rotation.y = currentRotationRef.current.y;
+      groupRef.current.rotation.x = currentRotationRef.current.x;
+      groupRef.current.rotation.y = currentRotationRef.current.y;
 
-        // 更缓慢的自动旋转
-        if (Math.abs(mouseRef.current.x) < 0.05 && Math.abs(mouseRef.current.y) < 0.05) {
-          groupRef.current.rotation.y += 0.001;
-        }
+      // Gentle auto-rotation when mouse is not moving
+      if (Math.abs(mouseRef.current.x) < 0.05 && Math.abs(mouseRef.current.y) < 0.05) {
+        groupRef.current.rotation.y += 0.002;
       }
 
-      // Exhibition mode: show only one video, interactive mode: show all videos
+      // Interactive mode: show all items with hover effects
       meshesRef.current.forEach((mesh, id) => {
         const isActive = activeVideo === id;
         const isHovered = hoveredItem === id;
-        const isExhibitionActive = exhibitionVideo === id;
         
         let targetScale = 1;
-        let targetOpacity = 0.9;
+        let targetOpacity = 1.0;
         
-        if (isExhibitionMode) {
-          // Exhibition mode: only show the current exhibition video
-          if (isExhibitionActive) {
-            targetScale = 1.5;
-            targetOpacity = 1;
-          } else {
-            targetScale = 0;
-            targetOpacity = 0;
-          }
+        if (isActive) {
+          targetScale = 1.2;
+          targetOpacity = 1.0;
+        } else if (isHovered) {
+          targetScale = 1.1;
+          targetOpacity = 1.0;
         } else {
-          // Interactive mode: normal behavior
-          if (isActive) {
-            targetScale = 1.1;
-            targetOpacity = 1;
-          } else if (isHovered) {
-            targetScale = 1.05;
-            targetOpacity = 0.95;
-          }
+          targetScale = 1.0;
+          targetOpacity = 1.0;
         }
         
         const currentScale = mesh.scale.x;
         const newScale = currentScale + (targetScale - currentScale) * 0.08;
         mesh.scale.setScalar(newScale);
         
-        const currentOpacity = (mesh.material as THREE.MeshBasicMaterial).opacity || 0.9;
+        const currentOpacity = (mesh.material as THREE.MeshBasicMaterial).opacity || 1.0;
         const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.08;
         (mesh.material as THREE.MeshBasicMaterial).opacity = newOpacity;
       });
@@ -704,11 +636,6 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
 
     animate();
 
-    // Start exhibition mode cycle
-    if (isExhibitionMode) {
-      setTimeout(startExhibitionMode, 2000); // Start after 2 seconds
-    }
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
@@ -716,10 +643,6 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
       
       if (frameId.current) {
         cancelAnimationFrame(frameId.current);
-      }
-      
-      if (focusTimerRef.current) {
-        clearTimeout(focusTimerRef.current);
       }
       
       if (rendererRef.current && mountRef.current) {
@@ -732,27 +655,11 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         video.src = '';
       });
     };
-  }, [mediaItems, isExhibitionMode]);
+  }, [mediaItems]);
 
       return (
         <div className="relative w-full h-screen overflow-hidden">
-          {/* Glitch background effect */}
-          <div className="glitch-bg"></div>
-          
-          <div ref={mountRef} className="w-full h-full" />
-          
-          {/* 90s Television Effects */}
-          <div className="crt-overlay"></div>
-          <div className="crt-scanlines"></div>
-          <div className="crt-distortion"></div>
-          <div className="crt-color-shift"></div>
-          <div className="crt-vignette"></div>
-          <div className="crt-flicker"></div>
-          <div className="crt-ghosting"></div>
-          <div className="vintage-color-grade"></div>
-          <div className="digital-artifacts"></div>
-          <div className="crt-curvature"></div>
-          <div className="vintage-noise"></div>
+          <div ref={mountRef} className="w-full h-full absolute inset-0 z-0" />
           
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
@@ -762,30 +669,20 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
               </div>
             </div>
           )}
-          
-          {/* Static neon liquid digital art background */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-            <div className="jarring-element"></div>
-          </div>
 
           {/* Focused view overlay */}
           {isFocused && focusedItem && (
-            <div className="absolute inset-0 bg-black bg-opacity-80 backdrop-blur-md z-20 flex items-center justify-center">
-              <div className="text-center text-white max-w-2xl mx-auto p-8">
+            <div className="absolute inset-0 bg-black bg-opacity-90 backdrop-blur-md z-20 flex items-center justify-center">
+              <div className="text-center text-white max-w-4xl mx-auto p-8">
+                {focusedItem.type === 'image' ? (
+                  <div className="mb-6">
+                    <img 
+                      src={focusedItem.src} 
+                      alt={focusedItem.title}
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+                    />
+                  </div>
+                ) : null}
                 <h2 className="text-display text-4xl mb-4 font-black tracking-tight">
                   {focusedItem.title}
                 </h2>
@@ -811,7 +708,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
                     setFocusedItem(null);
                     setActiveVideo(null);
                   }}
-                  className="text-distorted text-white hover:text-orange-300 transition-colors tracking-wider"
+                  className="text-distorted text-white hover:text-orange-300 transition-colors tracking-wider bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl"
                 >
                   ← return to gallery
                 </button>
@@ -821,11 +718,11 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
 
           {/* Main text overlay - only show when not focused */}
           {!isFocused && (
-            <div className="absolute top-1/2 left-8 transform -translate-y-1/2 text-white animate-fade-in-up text-left z-10 bg-black bg-opacity-20 backdrop-blur-sm rounded-lg p-10 max-w-lg shadow-xl">
-              <h1 className="text-display text-5xl mb-6 font-black tracking-tight">a byjustinwu curation</h1>
-              <p className="text-distorted text-white mb-4 text-2xl tracking-wider ml-2">08/14/25</p>
-              <p className="text-body text-sm text-white opacity-90 tracking-wide">
-                {isExhibitionMode ? 'exhibition mode • auto-rotating' : 'hover to explore • click to open'}
+            <div className="absolute top-1/2 left-8 transform -translate-y-1/2 text-white animate-fade-in-up text-left z-10 bg-black/40 backdrop-blur-md rounded-lg p-10 max-w-lg shadow-2xl">
+              <h1 className="text-display text-5xl mb-6 font-black tracking-tight drop-shadow-2xl">a byjustinwu curation</h1>
+              <p className="text-distorted text-white mb-4 text-lg tracking-wider ml-2 drop-shadow-2xl">© 2025 byjustinwu</p>
+              <p className="text-body text-sm text-white opacity-95 tracking-wide drop-shadow-lg">
+                hover to explore • click to open
               </p>
             </div>
           )}
@@ -833,46 +730,22 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
           {/* Status indicators - positioned to avoid overlap */}
           {!isFocused && (
             <div className="absolute top-12 right-12 flex flex-col items-end space-y-3 max-w-xs">
-              {isExhibitionMode && exhibitionVideo && (
-                <div className="text-stretched text-white animate-fade-in">
+              {activeVideo && (
+                <div className="text-stretched text-white animate-fade-in bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
-                    <span className="tracking-wider">playing</span>
+                    <span className="tracking-wider drop-shadow-2xl">playing</span>
                   </div>
                 </div>
               )}
-              
-              {/* Exhibition mode toggle */}
-              <button 
-                onClick={() => {
-                  setIsExhibitionMode(!isExhibitionMode);
-                  if (focusTimerRef.current) {
-                    clearTimeout(focusTimerRef.current);
-                  }
-                  if (!isExhibitionMode) {
-                    setTimeout(startExhibitionMode, 1000);
-                  }
-                }}
-                className="text-distorted text-white hover:text-orange-300 transition-colors tracking-wider"
-              >
-                {isExhibitionMode ? 'exhibition' : 'interactive'}
-              </button>
             </div>
           )}
 
           {activeVideo && !isFocused && (
-            <div className="absolute bottom-8 right-8 text-stretched text-white animate-fade-in max-w-xs">
+            <div className="absolute bottom-8 right-8 text-stretched text-white animate-fade-in max-w-xs bg-black/40 backdrop-blur-md rounded-lg p-4 shadow-2xl drop-shadow-2xl">
               playing video
             </div>
           )}
-
-          {/* Cool branding element with copyright */}
-          <div className="absolute bottom-12 left-12 text-distorted text-white opacity-90 animate-fade-in max-w-xs">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-orange-400 rounded-full shadow-lg"></div>
-              <span className="tracking-wider">© 2025 byjustinwu</span>
-            </div>
-          </div>
         </div>
       );
 };

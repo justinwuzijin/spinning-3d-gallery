@@ -17,7 +17,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
   color: #2c3e50;
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -82,28 +82,36 @@ body {
   font-weight: 900;
 }
 
-/* Vintage archival typography */
+/* Vintage archival typography - Enhanced for bright background */
 .text-display {
   font-family: 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 0.85;
   text-shadow: 
-    2px 2px 0px rgba(0,0,0,0.3), 
-    4px 4px 8px rgba(0,0,0,0.4), 
-    0 0 8px rgba(255,255,255,0.2),
-    0 0 15px rgba(255, 0, 0, 0.2),
-    0 0 25px rgba(0, 255, 0, 0.1),
-    0 0 35px rgba(0, 0, 255, 0.1);
-  filter: contrast(1.4) brightness(1.2) saturate(1.3) sepia(0.2) hue-rotate(10deg) blur(0.2px);
-  color: #1a1a1a;
+    2px 2px 0px rgba(0,0,0,0.8), 
+    4px 4px 8px rgba(0,0,0,0.9), 
+    0 0 20px rgba(255,255,255,1),
+    0 0 30px rgba(255, 255, 255, 0.8),
+    0 0 40px rgba(255, 255, 255, 0.6),
+    0 0 50px rgba(255, 255, 255, 0.4);
+  filter: contrast(2.5) brightness(2.0) saturate(1.8) sepia(0.1) hue-rotate(5deg) blur(0.1px);
+  color: #ffffff;
   text-transform: lowercase;
   font-size: 3.5rem;
   text-align: left;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
   position: relative;
-  animation: flicker 0.15s infinite, textGlitch 8s ease-in-out infinite;
+  animation: flicker 0.15s infinite, textGlitch 8s ease-in-out infinite, blueScreenFlash 12s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 0px; /* Removed rounded corners for edgy look */
+  box-shadow: 
+    0 0 25px rgba(255,255,255,0.8),
+    0 0 50px rgba(255,255,255,0.4),
+    0 0 75px rgba(255,255,255,0.2);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); /* Sharp square edges */
 }
 
 .text-display::before {
@@ -121,10 +129,10 @@ body {
       0deg,
       transparent,
       transparent 1px,
-      rgba(255, 255, 255, 0.08) 1px,
-      rgba(255, 255, 255, 0.08) 2px
+      rgba(255, 255, 255, 0.15) 1px,
+      rgba(255, 255, 255, 0.15) 2px
     );
-  opacity: 0.4;
+  opacity: 0.6;
   pointer-events: none;
   z-index: -1;
   animation: textGrain 0.2s infinite;
@@ -141,8 +149,8 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(255, 255, 255, 0.05) 2px,
-    rgba(255, 255, 255, 0.05) 4px
+    rgba(255, 255, 255, 0.1) 2px,
+    rgba(255, 255, 255, 0.1) 4px
   );
   pointer-events: none;
   z-index: -1;
@@ -152,33 +160,36 @@ body {
   font-family: 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 800;
   letter-spacing: -0.03em;
-  text-shadow: 1px 1px 0px rgba(0,0,0,0.3), 2px 2px 4px rgba(0,0,0,0.4), 0 0 6px rgba(255,255,255,0.2);
-  filter: contrast(1.3) brightness(1.2) saturate(1.1) sepia(0.2) hue-rotate(8deg) blur(0.1px);
-  color: #2c3e50;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.9), 4px 4px 8px rgba(0,0,0,0.8), 0 0 12px rgba(255,255,255,0.8);
+  filter: contrast(1.8) brightness(1.5) saturate(1.3) sepia(0.2) hue-rotate(8deg) blur(0.1px);
+  color: #ffffff;
   text-transform: uppercase;
   animation: flicker 0.2s infinite;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); /* Sharp square edges */
 }
 
 .text-body {
   font-family: 'SF Pro Text', 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 600;
   letter-spacing: -0.01em;
-  text-shadow: 1px 1px 0px rgba(0,0,0,0.2), 2px 2px 4px rgba(0,0,0,0.3), 0 0 4px rgba(255,255,255,0.1);
-  filter: contrast(1.2) brightness(1.1) saturate(1.1) sepia(0.1) hue-rotate(5deg) blur(0.1px);
-  color: #34495e;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.8), 3px 3px 6px rgba(0,0,0,0.7), 0 0 8px rgba(255,255,255,0.6);
+  filter: contrast(1.5) brightness(1.3) saturate(1.2) sepia(0.1) hue-rotate(5deg) blur(0.1px);
+  color: #ffffff;
   text-transform: uppercase;
   animation: flicker 0.25s infinite;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); /* Sharp square edges */
 }
 
 .text-caption {
   font-family: 'SF Pro Text', 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 500;
   letter-spacing: 0.02em;
-  text-shadow: 1px 1px 0px rgba(0,0,0,0.2), 1px 1px 2px rgba(0,0,0,0.3), 0 0 3px rgba(255,255,255,0.1);
-  filter: contrast(1.2) brightness(1.1) saturate(1.1) sepia(0.1) hue-rotate(3deg) blur(0.1px);
-  color: #495057;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.7), 0 0 6px rgba(255,255,255,0.5);
+  filter: contrast(1.4) brightness(1.2) saturate(1.2) sepia(0.1) hue-rotate(3deg) blur(0.1px);
+  color: #ffffff;
   text-transform: uppercase;
   animation: flicker 0.25s infinite;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); /* Sharp square edges */
 }
 
 /* Distorted text effects - inspired by Ginger Root */
@@ -187,8 +198,8 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   transform: scaleX(1.3) scaleY(1.4) skew(-2deg);
-  filter: contrast(1.8) brightness(1.5) saturate(1.6) sepia(0.5) hue-rotate(20deg) blur(0.4px);
-  text-shadow: 2px 2px 0px #000, 4px 4px 8px rgba(0,0,0,0.7), 0 0 12px rgba(255,255,255,0.2), 0 0 20px rgba(255,255,255,0.1);
+  filter: contrast(2.0) brightness(1.8) saturate(1.8) sepia(0.5) hue-rotate(20deg) blur(0.4px);
+  text-shadow: 3px 3px 0px rgba(0,0,0,0.9), 6px 6px 12px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8);
   color: #ffffff;
   letter-spacing: 0.1em;
   position: relative;
@@ -231,8 +242,8 @@ body {
   font-weight: 900;
   text-transform: uppercase;
   transform: scaleX(1.5) scaleY(1.6);
-  filter: contrast(2.0) brightness(1.6) saturate(1.7) sepia(0.6) hue-rotate(25deg) blur(0.5px);
-  text-shadow: 3px 3px 0px #000, 6px 6px 12px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.3), 0 0 25px rgba(255,255,255,0.2);
+  filter: contrast(2.2) brightness(1.8) saturate(1.9) sepia(0.6) hue-rotate(25deg) blur(0.5px);
+  text-shadow: 4px 4px 0px rgba(0,0,0,0.9), 8px 8px 16px rgba(0,0,0,0.8), 0 0 25px rgba(255,255,255,1), 0 0 35px rgba(255,255,255,0.8);
   color: #ffffff;
   letter-spacing: 0.12em;
   position: relative;
@@ -288,14 +299,14 @@ body {
     #6600ff  /* Bold neon purple */
   );
   border-radius: 0;
-  opacity: 0.6; /* Increased from 0.4 for better visibility on bright background */
+  opacity: 0.8; /* Increased from 0.6 for better visibility on bright background */
   animation: jarringRotate 20s linear infinite;
-  filter: brightness(1.1) contrast(1.2) saturate(1.4); /* Increased intensity for bright background */
+  filter: brightness(1.3) contrast(1.4) saturate(1.6); /* Increased intensity for bright background */
   box-shadow: 
-    0 0 15px rgba(255, 0, 0, 0.4), /* Increased from 0.3 */
-    0 0 25px rgba(0, 255, 0, 0.3), /* Increased from 0.2 */
-    0 0 35px rgba(0, 0, 255, 0.3), /* Increased from 0.2 */
-    0 0 45px rgba(255, 255, 0, 0.2); /* Increased from 0.1 */
+    0 0 20px rgba(255, 0, 0, 0.5), /* Increased from 0.4 */
+    0 0 30px rgba(0, 255, 0, 0.4), /* Increased from 0.3 */
+    0 0 40px rgba(0, 0, 255, 0.4), /* Increased from 0.3 */
+    0 0 50px rgba(255, 255, 0, 0.3); /* Increased from 0.2 */
 }
 
 .jarring-element:nth-child(1) {
@@ -1178,7 +1189,7 @@ body {
   height: 100%;
   background: #000000;
   z-index: -1;
-  animation: glitchBackground 8s ease-in-out infinite;
+  animation: glitchBackground 8s ease-in-out infinite, blueScreenFlash 15s ease-in-out infinite;
 }
 
 @keyframes glitchBackground {
@@ -1227,4 +1238,217 @@ body {
   99%, 100% { 
     background: #000000; /* Back to black */
   }
+}
+
+@keyframes blueScreenFlash {
+  0%, 90% {
+    background: transparent;
+  }
+  91% {
+    background: rgba(0, 0, 255, 0.8); /* Blue screen flash */
+  }
+  92% {
+    background: rgba(0, 0, 0, 0.9); /* Black screen */
+  }
+  93% {
+    background: rgba(0, 0, 255, 0.6); /* Blue screen again */
+  }
+  94% {
+    background: rgba(0, 0, 0, 0.8); /* Black screen again */
+  }
+  95% {
+    background: rgba(0, 0, 255, 0.4); /* Final blue flash */
+  }
+  96%, 100% {
+    background: transparent;
+  }
+}
+
+/* Fluid liquid digital gradient animations */
+@keyframes gradient-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    background-position: 100% 50%;
+    transform: scale(1.1) rotate(90deg);
+  }
+  50% {
+    background-position: 100% 100%;
+    transform: scale(0.9) rotate(180deg);
+  }
+  75% {
+    background-position: 0% 100%;
+    transform: scale(1.05) rotate(270deg);
+  }
+}
+
+@keyframes gradient-flow-reverse {
+  0%, 100% {
+    background-position: 100% 100%;
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    background-position: 0% 100%;
+    transform: scale(0.9) rotate(-90deg);
+  }
+  50% {
+    background-position: 0% 0%;
+    transform: scale(1.1) rotate(-180deg);
+  }
+  75% {
+    background-position: 100% 0%;
+    transform: scale(1.05) rotate(-270deg);
+  }
+}
+
+@keyframes gradient-flow-slow {
+  0%, 100% {
+    background-position: 50% 50%;
+    transform: scale(1) rotate(0deg);
+  }
+  33% {
+    background-position: 100% 0%;
+    transform: scale(1.2) rotate(120deg);
+  }
+  66% {
+    background-position: 0% 100%;
+    transform: scale(0.8) rotate(240deg);
+  }
+}
+
+@keyframes liquid-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(100px, -50px) scale(1.2) rotate(90deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50px, 100px) scale(0.8) rotate(180deg);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(50px, -100px) scale(1.1) rotate(270deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes liquid-float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(-100px, 50px) scale(0.8) rotate(-90deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(50px, -100px) scale(1.2) rotate(-180deg);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(-50px, 100px) scale(1.1) rotate(-270deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes liquid-float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0.3;
+  }
+  33% {
+    transform: translate(150px, -75px) scale(1.3) rotate(120deg);
+    opacity: 0.5;
+  }
+  66% {
+    transform: translate(-75px, 150px) scale(0.7) rotate(240deg);
+    opacity: 0.4;
+  }
+}
+
+@keyframes liquid-float-delayed {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(-75px, -150px) scale(1.1) rotate(-90deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(150px, 75px) scale(0.9) rotate(-180deg);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(-150px, -75px) scale(1.2) rotate(-270deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes flow-horizontal {
+  0%, 100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+}
+
+@keyframes flow-vertical {
+  0%, 100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(100%);
+    opacity: 0.3;
+  }
+}
+
+.animate-gradient-flow {
+  animation: gradient-flow 20s ease-in-out infinite;
+  background-size: 400% 400%;
+}
+
+.animate-gradient-flow-reverse {
+  animation: gradient-flow-reverse 25s ease-in-out infinite;
+  background-size: 400% 400%;
+}
+
+.animate-gradient-flow-slow {
+  animation: gradient-flow-slow 30s ease-in-out infinite;
+  background-size: 400% 400%;
+}
+
+.animate-liquid-float {
+  animation: liquid-float 15s ease-in-out infinite;
+}
+
+.animate-liquid-float-reverse {
+  animation: liquid-float-reverse 18s ease-in-out infinite;
+}
+
+.animate-liquid-float-slow {
+  animation: liquid-float-slow 22s ease-in-out infinite;
+}
+
+.animate-liquid-float-delayed {
+  animation: liquid-float-delayed 20s ease-in-out infinite;
+  animation-delay: 5s;
+}
+
+.animate-flow-horizontal {
+  animation: flow-horizontal 12s ease-in-out infinite;
+}
+
+.animate-flow-vertical {
+  animation: flow-vertical 15s ease-in-out infinite;
+  animation-delay: 3s;
 }
