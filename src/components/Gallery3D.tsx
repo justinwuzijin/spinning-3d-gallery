@@ -8,6 +8,7 @@ interface MediaItem {
   thumbnail?: string;
   title: string;
   prompt?: string;
+  videoUrl?: string;
 }
 
 interface Gallery3DProps {
@@ -780,7 +781,12 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
                 <img 
                   src={focusedItem.src} 
                   alt={focusedItem.title}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl cursor-pointer hover:scale-105 transition-transform duration-200"
+                  onClick={() => {
+                    if (focusedItem.videoUrl) {
+                      window.open(focusedItem.videoUrl, '_blank');
+                    }
+                  }}
                 />
               </div>
             ) : null}
@@ -788,18 +794,31 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { /
               {focusedItem.title}
             </h2>
             <p className="text-lg mb-6 opacity-90">
-              {focusedItem.type === 'video' ? 'Video' : 'Image'} • Click to return to gallery
+              {focusedItem.videoUrl ? (
+                <span className="text-orange-300 font-medium">
+                  🎬 Click on the image above to watch the video!
+                </span>
+              ) : (
+                `${focusedItem.type === 'video' ? 'Video' : 'Image'} • Click to return to gallery`
+              )}
             </p>
-            {focusedItem.type === 'video' && (focusedItem.src.includes('youtube.com') || focusedItem.src.includes('youtu.be')) && (
-              <div className="mb-6">
-                <p className="mb-2">YouTube video opened in new tab</p>
+            {focusedItem.videoUrl && (
+              <div className="mb-6 p-4 bg-white/10 rounded-lg backdrop-blur-md">
+                <p className="text-sm opacity-80 mb-2">
+                  {focusedItem.videoUrl.includes('youtube.com') || focusedItem.videoUrl.includes('youtu.be') 
+                    ? 'YouTube Video' 
+                    : focusedItem.videoUrl.includes('instagram.com') 
+                    ? 'Instagram Video' 
+                    : 'Video'
+                  }
+                </p>
                 <a 
-                  href={focusedItem.src} 
+                  href={focusedItem.videoUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-block bg-orange-400 text-black px-6 py-3 rounded-lg font-bold hover:bg-orange-300 transition-colors"
                 >
-                  Open Video
+                  Open Video in New Tab
                 </a>
               </div>
             )}
