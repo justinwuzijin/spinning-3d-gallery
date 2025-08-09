@@ -1,7 +1,7 @@
 import React from 'react';
 import Gallery3D from './components/Gallery3D';
 
-// Sample media items - replace with your YouTube video links
+// 更符合简约美学的媒体项目
 const sampleMediaItems = [
   {
     id: '1',
@@ -67,8 +67,8 @@ const sampleMediaItems = [
 
 function App() {
   return (
-    <div className="w-full h-screen">
-      <Gallery3D mediaItems={sampleMediaItems} radius={10} />
+    <div className="w-full h-screen bg-[#fafafa]">
+      <Gallery3D mediaItems={sampleMediaItems} radius={12} />
     </div>
   );
 }
