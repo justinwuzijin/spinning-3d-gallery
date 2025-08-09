@@ -15,7 +15,7 @@ interface Gallery3DProps {
   radius?: number;
 }
 
-const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
+const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 12 }) => { // Increased default radius from 8 to 12
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene>();
   const rendererRef = useRef<THREE.WebGLRenderer>();
@@ -30,9 +30,17 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const videosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const meshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
   const lastMouseMoveRef = useRef<number>(0);
+
+  // Add debug logging
+  useEffect(() => {
+    console.log('Gallery3D mounted with:', { mediaItems: mediaItems?.length, radius });
+    console.log('WebGL support:', !!window.WebGLRenderingContext);
+    console.log('Three.js version:', THREE.REVISION);
+  }, [mediaItems, radius]);
 
   const createVideoTexture = (item: MediaItem): Promise<THREE.Texture> => {
     return new Promise((resolve) => {
@@ -188,7 +196,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   };
 
   const createImageTexture = (src: string): Promise<THREE.Texture> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const loader = new THREE.TextureLoader();
       
       // Set a timeout for image loading
@@ -242,7 +250,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
           resolve(texture);
         },
         undefined, // onProgress
-        (error) => {
+        () => {
           // onError - create fallback
           clearTimeout(timeout);
           console.log('Failed to load image:', src, 'creating fallback');
@@ -302,8 +310,8 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
       const x = Math.cos(theta) * radius_at_y;
       const z = Math.sin(theta) * radius_at_y;
       
-      // Use consistent radius for perfect alignment - no random variation
-      const scaledRadius = radius * 0.8; // Increased from 0.7 for bigger gallery
+      // Use consistent radius for perfect alignment - increased for bigger gallery
+      const scaledRadius = radius * 0.9; // Increased from 0.8 for even bigger gallery
       points.push(new THREE.Vector3(x * scaledRadius, y * scaledRadius, z * scaledRadius));
     }
     
@@ -311,54 +319,69 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
   };
 
   const initScene = () => {
-    if (!mountRef.current) return;
+    if (!mountRef.current) {
+      console.error('Mount ref not available');
+      setError('Mount element not found');
+      return;
+    }
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-    sceneRef.current = scene;
+    try {
+      console.log('Initializing Three.js scene...');
+      
+      // Scene setup
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
+      sceneRef.current = scene;
 
-    // Camera setup - Optimized for perfect spherical alignment
-    const camera = new THREE.PerspectiveCamera(
-      75, // Wider FOV for better visibility
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    // Position camera for optimal viewing of the spherical layout
-    camera.position.set(0, 0, 28); // Further back for bigger gallery
-    cameraRef.current = camera;
+      // Camera setup - Optimized for perfect spherical alignment
+      const camera = new THREE.PerspectiveCamera(
+        75, // Wider FOV for better visibility
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      // Position camera for optimal viewing of the spherical layout
+      camera.position.set(0, 0, 35); // Further back for bigger gallery (increased from 28)
+      cameraRef.current = camera;
 
-    // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      powerPreference: 'high-performance'
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = false;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    rendererRef.current = renderer;
+      // Renderer setup
+      const renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: 'high-performance'
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = false;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      rendererRef.current = renderer;
 
-    mountRef.current.appendChild(renderer.domElement);
+      mountRef.current.appendChild(renderer.domElement);
+      console.log('Renderer added to DOM');
 
-    // Much brighter lighting for better visibility
-    const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
-    scene.add(ambientLight);
+      // Much brighter lighting for better visibility
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.8); // Reduced from 2.5 to fix overexposure
+      scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    directionalLight.position.set(5, 5, 5);
-    scene.add(directionalLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Reduced from 2.0 to fix overexposure
+      directionalLight.position.set(5, 5, 5);
+      scene.add(directionalLight);
 
-    // Create group for all media items
-    const group = new THREE.Group();
-    groupRef.current = group;
-    scene.add(group);
+      // Create group for all media items
+      const group = new THREE.Group();
+      groupRef.current = group;
+      scene.add(group);
+      
+      console.log('Scene initialized successfully');
+    } catch (error) {
+      console.error('Error initializing scene:', error);
+      setError(`Scene initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const createMediaItems = async () => {
     if (!groupRef.current) {
+      console.error('Group ref not available');
       setIsLoading(false);
       return;
     }
@@ -371,6 +394,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
     }
 
     try {
+      console.log(`Creating ${mediaItems.length} media items...`);
       const positions = createCircularStructure(mediaItems.length, radius);
       const loadPromises: Promise<void>[] = [];
 
@@ -387,7 +411,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
             }
 
             // Create plane geometry - optimized for perfect spherical alignment with rounded corners
-            const geometry = new THREE.PlaneGeometry(3.2, 2.4); // Increased from 2.5, 1.8
+            const geometry = new THREE.PlaneGeometry(4.0, 3.0); // Increased from 3.2, 2.4 for bigger items
             
             // Create a material with rounded corners effect using a simple approach
             const material = new THREE.MeshBasicMaterial({ 
@@ -412,11 +436,12 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
 
             groupRef.current!.add(mesh);
             meshesRef.current.set(item.id, mesh);
+            console.log(`Created mesh for item ${item.id} at position:`, position);
 
           } catch (error) {
             console.error(`Error loading media item ${item.id}:`, error);
             // Create a fallback mesh even if loading fails
-            const fallbackGeometry = new THREE.PlaneGeometry(3.2, 2.4); // Match the new size
+            const fallbackGeometry = new THREE.PlaneGeometry(4.0, 3.0); // Match the new size
             const fallbackMaterial = new THREE.MeshBasicMaterial({
               color: 0xff0000,
               transparent: true,
@@ -430,6 +455,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
             fallbackMesh.userData = { item, originalScale: { x: 1, y: 1, z: 1 }, originalOpacity: 1.0 };
             groupRef.current!.add(fallbackMesh);
             meshesRef.current.set(item.id, fallbackMesh);
+            console.log(`Created fallback mesh for item ${item.id}`);
           }
         })();
 
@@ -442,6 +468,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
       console.log('All media items loaded successfully');
     } catch (error) {
       console.error('Error in createMediaItems:', error);
+      setError(`Failed to create media items: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsLoading(false);
     }
   };
@@ -518,16 +545,15 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         }
 
         if (clickedItem) {
-          // If it's a video, open it directly in a new tab
-          if (clickedItem.type === 'video') {
-            window.open(clickedItem.src, '_blank');
-            return; // Don't focus, just open the link
-          }
-          
-          // For images, focus on the clicked item
+          // For all items, focus on the clicked item to show details
           setIsFocused(true);
           setFocusedItem(clickedItem);
           setActiveVideo(clickedItem.id);
+          
+          // If it's a video, also open it in a new tab
+          if (clickedItem.type === 'video') {
+            window.open(clickedItem.src, '_blank');
+          }
         }
       }
     }
@@ -535,6 +561,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
 
   const animate = () => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current || !groupRef.current) {
+      console.warn('Animation skipped - missing refs');
       return;
     }
 
@@ -547,7 +574,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         const currentPosition = cameraRef.current.position;
         
         // Move camera closer to the focused item
-        const distance = 8;
+        const distance = 12; // Increased from 8 for better focus view
         const direction = new THREE.Vector3(0, 0, 1);
         const targetCameraPosition = targetPosition.clone().add(direction.multiplyScalar(distance));
         
@@ -555,7 +582,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         cameraRef.current.lookAt(targetPosition);
         
         // Scale up the focused item
-        const targetScale = 2;
+        const targetScale = 2.5; // Increased from 2 for better focus view
         const currentScale = focusedMesh.scale.x;
         const newScale = currentScale + (targetScale - currentScale) * 0.1;
         focusedMesh.scale.setScalar(newScale);
@@ -629,22 +656,33 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
 
   useEffect(() => {
     const initializeGallery = async () => {
-      initScene();
-      await createMediaItems();
+      try {
+        console.log('Starting gallery initialization...');
+        initScene();
+        await createMediaItems();
+        console.log('Gallery initialization complete');
+      } catch (error) {
+        console.error('Gallery initialization failed:', error);
+        setError(`Gallery initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     };
 
     initializeGallery();
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('click', handleClick);
-    window.addEventListener('resize', handleResize);
+    const handleMouseMoveWrapper = (event: MouseEvent) => handleMouseMove(event);
+    const handleClickWrapper = (event: MouseEvent) => handleClick(event);
+    const handleResizeWrapper = () => handleResize();
+
+    window.addEventListener('mousemove', handleMouseMoveWrapper);
+    window.addEventListener('click', handleClickWrapper);
+    window.addEventListener('resize', handleResizeWrapper);
 
     animate();
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('click', handleClick);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMoveWrapper);
+      window.removeEventListener('click', handleClickWrapper);
+      window.removeEventListener('resize', handleResizeWrapper);
       
       if (frameId.current) {
         cancelAnimationFrame(frameId.current);
@@ -660,7 +698,37 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 8 }) => {
         video.src = '';
       });
     };
+  }, []); // Remove mediaItems dependency to prevent infinite loops
+
+  // Handle mediaItems changes separately
+  useEffect(() => {
+    if (groupRef.current && mediaItems && mediaItems.length > 0) {
+      // Clear existing meshes
+      groupRef.current.clear();
+      meshesRef.current.clear();
+      
+      // Recreate media items
+      createMediaItems();
+    }
   }, [mediaItems]);
+
+  // Show error if something went wrong
+  if (error) {
+    return (
+      <div className="relative w-full h-screen overflow-hidden bg-black flex items-center justify-center">
+        <div className="text-center text-white max-w-2xl mx-auto p-8">
+          <h2 className="text-3xl mb-4 font-bold text-red-400">Gallery Error</h2>
+          <p className="mb-4 text-lg">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
