@@ -63,8 +63,7 @@
         
         if (!webglSupported) {
             document.getElementById('status').innerHTML = '<div class="error">❌ WebGL is not supported in this browser</div>';
-            return;
-        }
+        } else {
         
         try {
             // Create a simple Three.js scene
@@ -98,6 +97,7 @@
         } catch (error) {
             document.getElementById('status').innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
             console.error('Three.js error:', error);
+        }
         }
     </script>
 </body>
