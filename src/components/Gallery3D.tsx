@@ -721,11 +721,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 11 }) => { /
           setFocusedItem(clickedItem);
           setActiveVideo(clickedItem.id);
           
-          // If it's a video, also open it in a new tab
-          if (clickedItem.type === 'video') {
-            console.log('Opening video in new tab:', clickedItem.src);
-            window.open(clickedItem.src, '_blank');
-          }
+          // Removed video opening functionality for interactive art gallery experience
         } else {
           console.warn('No item data found in intersected mesh');
         }
@@ -955,12 +951,7 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 11 }) => { /
                 <img 
                   src={focusedItem.src} 
                   alt={focusedItem.title}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl cursor-pointer hover:scale-105 transition-transform duration-200"
-                  onClick={() => {
-                    if (focusedItem.videoUrl) {
-                      window.open(focusedItem.videoUrl, '_blank');
-                    }
-                  }}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
                 />
               </div>
             ) : null}
@@ -968,34 +959,8 @@ const Gallery3D: React.FC<Gallery3DProps> = ({ mediaItems, radius = 11 }) => { /
               {focusedItem.title}
             </h2>
             <p className="text-lg mb-6 opacity-90">
-              {focusedItem.videoUrl ? (
-                <span className="text-orange-300 font-medium">
-                  🎬 Click on the image above to watch the video!
-                </span>
-              ) : (
-                `${focusedItem.type === 'video' ? 'Video' : 'Image'} • Click to return to gallery`
-              )}
+              {`${focusedItem.type === 'video' ? 'Video' : 'Image'} • Click to return to gallery`}
             </p>
-            {focusedItem.videoUrl && (
-              <div className="mb-6 p-4 bg-white/10 rounded-lg backdrop-blur-md">
-                <p className="text-sm opacity-80 mb-2">
-                  {focusedItem.videoUrl.includes('youtube.com') || focusedItem.videoUrl.includes('youtu.be') 
-                    ? 'YouTube Video' 
-                    : focusedItem.videoUrl.includes('instagram.com') 
-                    ? 'Instagram Video' 
-                    : 'Video'
-                  }
-                </p>
-                <a 
-                  href={focusedItem.videoUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-block bg-orange-400 text-black px-6 py-3 rounded-lg font-bold hover:bg-orange-300 transition-colors"
-                >
-                  Open Video in New Tab
-                </a>
-              </div>
-            )}
             <button 
               onClick={() => {
                 setIsFocused(false);
